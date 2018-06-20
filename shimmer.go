@@ -4,13 +4,14 @@ package shimmer
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"image"
+	"image/color"
+	_ "image/jpeg"
+	_ "image/png"
+	"strconv"
 	"syscall/js"
 	"time"
-
-	"github.com/anthonynsimon/bild/imgio"
 )
 
 type Shimmer struct {
@@ -77,18 +78,20 @@ func (s *Shimmer) Start() {
 // updateImage writes the image to a byte buffer and then converts it to base64.
 // Then it sets the value to the src attribute of the target image.
 func (s *Shimmer) updateImage(img *image.RGBA, start time.Time) {
-	enc := imgio.JPEGEncoder(90)
-	err := enc(&s.buf, img)
-	if err != nil {
-		s.log(err.Error())
-		return
-	}
-	// Setting the src property
-	js.Global.Get("document").
+	ctx := js.Global.Get("document").
 		Call("getElementById", "targetImg").
-		Set("src", jpegPrefix+base64.StdEncoding.EncodeToString(s.buf.Bytes()))
+		Call("getContext", "2d")
+	bounds := img.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			c := img.At(x, y)
+			rgba := c.(color.RGBA)
+
+			ctx.Set("fillStyle", "rgba("+strconv.Itoa(int(rgba.R))+","+strconv.Itoa(int(rgba.G))+","+strconv.Itoa(int(rgba.B))+","+strconv.Itoa(int(rgba.A))+")")
+			ctx.Call("fillRect", x, y, 1, 1)
+		}
+	}
 	fmt.Println("time taken:", time.Now().Sub(start))
-	s.buf.Reset()
 }
 
 // utility function to log a msg to the UI from inside a callback
