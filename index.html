@@ -40,6 +40,7 @@
 
 
 	<script src="wasm_loader.js"></script>
+	<script src="https://twgljs.org/dist/twgl.min.js"></script>
 	<script>
 		const go = new Go();
 		let mod, inst;
@@ -64,6 +65,84 @@
 
 			reader.readAsDataURL(this.files[0])
 		});
+
+		function UpdateCanvas(pixels, width, height) {
+			// https://stackoverflow.com/questions/35031129/how-to-render-binary-data-on-canvas-using-webgl#37224320
+			t0 = performance.now()
+			let canvas = document.getElementById('targetImg');
+			let gl = canvas.getContext("webgl");
+			console.log(width, height)
+
+			// let pixels = new Uint8Array(data); // 16x16 RGBA image
+			// console.log(data)
+			let texture = gl.createTexture();
+
+			gl.bindTexture(gl.TEXTURE_2D, texture);
+			gl.texImage2D(
+			  gl.TEXTURE_2D, // target
+			  0, // mip level
+			  gl.RGBA, // internal format
+			  width, 1024, // width and height
+			  0, // border
+			  gl.RGBA, //format
+			  gl.UNSIGNED_BYTE, // type
+			  pixels // texture data
+			);
+			gl.generateMipmap(gl.TEXTURE_2D);
+
+			// compiles and links the shaders and looks up uniform and attribute locations
+			var programInfo = twgl.createProgramInfo(gl, ["vs", "fs"]);
+			var arrays = {
+			  position: [
+			     -1, -1, 0,
+			      1, -1, 0,
+			     -1,  1, 0,
+			     -1,  1, 0,
+			      1, -1, 0,
+			      1,  1, 0,
+			  ],
+			};
+			// calls gl.createBuffer, gl.bindBuffer, gl.bufferData for each array
+			var bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
+
+			var uniforms = {
+			  u_texture: texture,
+			};
+
+			gl.useProgram(programInfo.program);
+			twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
+			twgl.setUniforms(programInfo, uniforms);
+			twgl.drawBufferInfo(gl, gl.TRIANGLES, bufferInfo);
+			t1 = performance.now();
+			console.log("call took- ", t1-t0, " ms");
+		}
+
+		function Demo(pixels) {
+			console.log(pixels)
+		}
 	</script>
+	<script id="vs" type="notjs">
+attribute vec4 position;
+
+varying vec2 v_texcoord;
+
+void main() {
+  gl_Position = position;
+
+  // Since we know we'll be passing in -1 to +1 for position
+  v_texcoord = position.xy * 0.5 + 0.5;
+}
+  </script>
+  <script id="fs" type="notjs">
+precision mediump float;
+
+uniform sampler2D u_texture;
+
+varying vec2 v_texcoord;
+
+void main() {
+  gl_FragColor = texture2D(u_texture, v_texcoord);
+}
+  </script>
 </body>
 </html>
