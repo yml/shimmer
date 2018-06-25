@@ -7,7 +7,6 @@
 		.image {
 			display: block;
 			max-height: 25rem;
-			width: 49%;
 			float: left;
 			border: 2px solid gray;
 			margin-right: 2px;
@@ -31,9 +30,9 @@
 	<label for="sat">Saturation</label>
 	<input type="range" min="-1" max="1" value="0" step="0.1" id="sat">
 
-	<div class="separator">Results:</div>
+	<div class="separator">preview:</div>
 	<div>
-		<image id="sourceImg" class="image" />
+		<image id="previewImg" class="image" />
 		<image id="targetImg" class="image" />
 	</div>
 
@@ -55,14 +54,6 @@
 			await go.run(inst);
 		}
 
-		document.getElementById('uploader').addEventListener('change', function() {
-			let reader = new FileReader();
-			reader.onload = (ev) => {
-				document.getElementById("sourceImg").src = ev.target.result;
-			};
-
-			reader.readAsDataURL(this.files[0])
-		});
 	</script>
 </body>
 </html>

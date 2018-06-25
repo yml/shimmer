@@ -7,18 +7,23 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+	"math"
+	"strings"
 	"syscall/js"
 	"time"
 
 	"github.com/anthonynsimon/bild/imgio"
+	"github.com/anthonynsimon/bild/transform"
 )
 
 type Shimmer struct {
-	buf                      bytes.Buffer
-	onImgLoadCb, shutdownCb  js.Callback
-	brightnessCb, contrastCb js.Callback
-	hueCb, satCb             js.Callback
-	sourceImg                image.Image
+	buf                        bytes.Buffer
+	onImgLoadCb, shutdownCb    js.Callback
+	brightnessCb, contrastCb   js.Callback
+	hueCb, satCb, fileUploadCb js.Callback
+	sourceImg                  image.Image
+	dstWidth                   int
+	resizedImg                 image.Image
 
 	done chan struct{}
 }
@@ -26,7 +31,8 @@ type Shimmer struct {
 // New returns a new instance of shimmer
 func New() *Shimmer {
 	return &Shimmer{
-		done: make(chan struct{}),
+		dstWidth: 300,
+		done:     make(chan struct{}),
 	}
 }
 
@@ -34,10 +40,10 @@ func New() *Shimmer {
 // to be sent from the browser.
 func (s *Shimmer) Start() {
 	// Setup callbacks
-	s.setupOnImgLoadCb()
+	s.setupOnFileUploadCb()
 	js.Global.Get("document").
-		Call("getElementById", "sourceImg").
-		Call("addEventListener", "load", s.onImgLoadCb)
+		Call("getElementById", "uploader").
+		Call("addEventListener", "change", s.fileUploadCb)
 
 	s.setupBrightnessCb()
 	js.Global.Get("document").
@@ -72,6 +78,45 @@ func (s *Shimmer) Start() {
 	s.hueCb.Close()
 	s.satCb.Close()
 	s.shutdownCb.Close()
+}
+
+func (s *Shimmer) setSourceImageFromString(simg string) {
+	switch {
+	case strings.HasPrefix(simg, jpegPrefix):
+		simg = strings.TrimPrefix(simg, jpegPrefix)
+	case strings.HasPrefix(simg, pngPrefix):
+		simg = strings.TrimPrefix(simg, pngPrefix)
+	default:
+		s.log("unrecognized image format")
+		return
+	}
+
+	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(simg))
+	var err error
+	s.sourceImg, _, err = image.Decode(reader)
+	if err != nil {
+		s.log(err.Error())
+		return
+	}
+	srcWidth, srcHeight := s.sourceImg.Bounds().Dx(), s.sourceImg.Bounds().Dy()
+	dstWidth := s.dstWidth
+	ratio := float64(srcHeight) / float64(srcWidth)
+	dstHeight := int(math.Ceil(ratio * float64(dstWidth)))
+	s.resizedImg = transform.Resize(s.sourceImg, dstWidth, dstHeight, transform.Linear)
+	enc := imgio.JPEGEncoder(90)
+	err = enc(&s.buf, s.resizedImg)
+	if err != nil {
+		s.log(err.Error())
+		return
+	}
+	// setting the previewImg src property
+	js.Global.Get("document").
+		Call("getElementById", "previewImg").
+		Set("src", jpegPrefix+base64.StdEncoding.EncodeToString(s.buf.Bytes()))
+	js.Global.Get("document").
+		Call("getElementById", "targetImg").
+		Set("src", jpegPrefix+base64.StdEncoding.EncodeToString(s.buf.Bytes()))
+	s.buf.Reset()
 }
 
 // updateImage writes the image to a byte buffer and then converts it to base64.

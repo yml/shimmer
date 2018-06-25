@@ -12,12 +12,12 @@ import (
 func (s *Shimmer) setupBrightnessCb() {
 	s.brightnessCb = js.NewEventCallback(js.PreventDefault, func(ev js.Value) {
 		// quick return if no source image is yet uploaded
-		if s.sourceImg == nil {
+		if s.resizedImg == nil {
 			return
 		}
 		delta := ev.Get("target").Get("value").Float()
 		start := time.Now()
-		res := adjust.Brightness(s.sourceImg, delta)
+		res := adjust.Brightness(s.resizedImg, delta)
 		s.updateImage(res, start)
 	})
 }
@@ -25,12 +25,12 @@ func (s *Shimmer) setupBrightnessCb() {
 func (s *Shimmer) setupContrastCb() {
 	s.contrastCb = js.NewEventCallback(js.PreventDefault, func(ev js.Value) {
 		// quick return if no source image is yet uploaded
-		if s.sourceImg == nil {
+		if s.resizedImg == nil {
 			return
 		}
 		delta := ev.Get("target").Get("value").Float()
 		start := time.Now()
-		res := adjust.Contrast(s.sourceImg, delta)
+		res := adjust.Contrast(s.resizedImg, delta)
 		s.updateImage(res, start)
 	})
 }
@@ -38,12 +38,12 @@ func (s *Shimmer) setupContrastCb() {
 func (s *Shimmer) setupHueCb() {
 	s.hueCb = js.NewEventCallback(js.PreventDefault, func(ev js.Value) {
 		// quick return if no source image is yet uploaded
-		if s.sourceImg == nil {
+		if s.resizedImg == nil {
 			return
 		}
 		delta := ev.Get("target").Get("value").Int()
 		start := time.Now()
-		res := adjust.Hue(s.sourceImg, delta)
+		res := adjust.Hue(s.resizedImg, delta)
 		s.updateImage(res, start)
 	})
 }
@@ -51,12 +51,12 @@ func (s *Shimmer) setupHueCb() {
 func (s *Shimmer) setupSatCb() {
 	s.satCb = js.NewEventCallback(js.PreventDefault, func(ev js.Value) {
 		// quick return if no source image is yet uploaded
-		if s.sourceImg == nil {
+		if s.resizedImg == nil {
 			return
 		}
 		delta := ev.Get("target").Get("value").Float()
 		start := time.Now()
-		res := adjust.Saturation(s.sourceImg, delta)
+		res := adjust.Saturation(s.resizedImg, delta)
 		s.updateImage(res, start)
 	})
 }
